@@ -1,0 +1,805 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FOCUS · 番茄钟</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=JetBrains+Mono:wght@300;400;600&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+/* ═══════════════════════════════════════════════════
+   DARK THEME (default)
+═══════════════════════════════════════════════════ */
+:root {
+  --bg:       #080810;
+  --bg2:      #0e0e1c;
+  --card:     rgba(255,255,255,0.03);
+  --border:   rgba(255,255,255,0.07);
+  --border-h: rgba(255,255,255,0.14);
+  --red:      #e8432d;
+  --red-dim:  rgba(232,67,45,0.14);
+  --red-glow: rgba(232,67,45,0.38);
+  --green:    #2de89a;
+  --amber:    #e8a82d;
+  --text:     #f0eaff;
+  --muted:    rgba(240,234,255,0.38);
+  --muted2:   rgba(240,234,255,0.09);
+  --btn-bg:   rgba(255,255,255,0.06);
+  --track:    rgba(255,255,255,0.05);
+  --shadow:   rgba(0,0,0,0.55);
+  --radius:   20px;
+  --ring-size:280px;
+}
+
+/* ═══════════════════════════════════════════════════
+   LIGHT THEME
+═══════════════════════════════════════════════════ */
+body.light {
+  --bg:       #f4efe9;
+  --bg2:      #ece7e0;
+  --card:     rgba(255,255,255,0.72);
+  --border:   rgba(0,0,0,0.08);
+  --border-h: rgba(0,0,0,0.16);
+  --red:      #d13d28;
+  --red-dim:  rgba(209,61,40,0.1);
+  --red-glow: rgba(209,61,40,0.22);
+  --green:    #1aaa65;
+  --amber:    #c07a14;
+  --text:     #18141f;
+  --muted:    rgba(24,20,31,0.42);
+  --muted2:   rgba(24,20,31,0.08);
+  --btn-bg:   rgba(0,0,0,0.05);
+  --track:    rgba(0,0,0,0.08);
+  --shadow:   rgba(0,0,0,0.1);
+}
+body.light::before { background: radial-gradient(ellipse, rgba(209,61,40,0.06) 0%, transparent 70%); }
+body.light::after  { background: radial-gradient(ellipse, rgba(45,100,209,0.05) 0%, transparent 70%); }
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--bg); color: var(--text);
+  font-family: 'DM Sans', sans-serif; min-height: 100vh;
+  overflow-x: hidden; position: relative;
+  transition: background 0.4s, color 0.4s;
+}
+body::before {
+  content: ''; position: fixed; top: -20%; left: -10%; width: 60%; height: 60%;
+  background: radial-gradient(ellipse, rgba(232,67,45,0.08) 0%, transparent 70%);
+  pointer-events: none; z-index: 0; transition: background 0.4s;
+}
+body::after {
+  content: ''; position: fixed; bottom: -20%; right: -10%; width: 50%; height: 50%;
+  background: radial-gradient(ellipse, rgba(45,100,232,0.07) 0%, transparent 70%);
+  pointer-events: none; z-index: 0; transition: background 0.4s;
+}
+
+.container { max-width: 1040px; margin: 0 auto; padding: 36px 22px 80px; position: relative; z-index: 1; }
+
+/* ─── HEADER ─── */
+header {
+  display: flex; align-items: center; justify-content: space-between;
+  flex-wrap: wrap; gap: 12px;
+  margin-bottom: 46px; padding-bottom: 20px;
+  border-bottom: 1px solid var(--border); transition: border-color 0.4s;
+}
+.logo {
+  font-family: 'DM Serif Display', serif; font-size: 1.45rem;
+  letter-spacing: 0.04em; display: flex; align-items: center; gap: 10px;
+}
+.logo-dot {
+  width: 10px; height: 10px; background: var(--red); border-radius: 50%;
+  box-shadow: 0 0 12px var(--red-glow); animation: pulseDot 2s ease-in-out infinite;
+}
+@keyframes pulseDot { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.5;transform:scale(.78)} }
+
+.header-right { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+
+/* Language switcher */
+.lang-group {
+  display: flex; gap: 2px; background: var(--muted2); border-radius: 999px; padding: 3px;
+  transition: background 0.3s;
+}
+.lang-btn {
+  border: none; background: transparent; cursor: pointer;
+  color: var(--muted); font-family: 'DM Sans', sans-serif;
+  font-size: 0.7rem; font-weight: 600; letter-spacing: 0.06em;
+  padding: 5px 12px; border-radius: 999px; transition: all 0.2s;
+}
+.lang-btn.active { background: var(--card); color: var(--red); box-shadow: 0 1px 5px var(--shadow); }
+.lang-btn:not(.active):hover { color: var(--text); }
+
+/* Theme toggle */
+.theme-btn {
+  width: 34px; height: 34px; border-radius: 50%; border: 1px solid var(--border);
+  background: var(--btn-bg); cursor: pointer; display: flex; align-items: center;
+  justify-content: center; font-size: 1rem; transition: all 0.2s;
+}
+.theme-btn:hover { border-color: var(--border-h); }
+
+/* Status badge */
+.status-badge {
+  background: var(--red-dim); border: 1px solid rgba(232,67,45,0.28);
+  color: var(--red); font-size: 0.7rem; font-weight: 600;
+  letter-spacing: 0.1em; text-transform: uppercase; padding: 6px 14px; border-radius: 999px;
+  transition: all 0.3s;
+}
+
+/* ─── GRID ─── */
+.main-grid {
+  display: grid; grid-template-columns: 1fr 1fr;
+  grid-template-rows: auto auto; gap: 18px; align-items: start;
+}
+
+/* ─── CARD ─── */
+.card {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: var(--radius); backdrop-filter: blur(18px); overflow: hidden;
+  transition: border-color 0.3s, background 0.4s;
+}
+.card:hover { border-color: var(--border-h); }
+.card-header { display: flex; align-items: center; justify-content: space-between; padding: 20px 24px 0; }
+.card-title { font-size: 0.67rem; font-weight: 600; letter-spacing: 0.15em; text-transform: uppercase; color: var(--muted); transition: color 0.3s; }
+
+/* ─── TIMER CARD ─── */
+.timer-card { grid-column:1; grid-row:1; padding-bottom: 26px; display: flex; flex-direction: column; align-items: center; }
+
+.mode-tabs {
+  display: flex; gap: 4px; margin: 18px 0 26px;
+  background: var(--muted2); padding: 4px; border-radius: 12px; transition: background 0.3s;
+}
+.mode-tab {
+  padding: 7px 14px; border-radius: 9px; border: none; background: transparent;
+  color: var(--muted); font-family: 'DM Sans', sans-serif; font-size: 0.76rem;
+  font-weight: 500; cursor: pointer; transition: all 0.2s; white-space: nowrap;
+}
+.mode-tab.active { background: var(--red); color: #fff; }
+
+/* Ring */
+.ring-wrap { position: relative; width: var(--ring-size); height: var(--ring-size); margin: 0 auto; }
+.ring-svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+.ring-track { fill: none; stroke: var(--track); stroke-width: 6; transition: stroke 0.4s; }
+.ring-fill {
+  fill: none; stroke: var(--red); stroke-width: 6; stroke-linecap: round;
+  stroke-dasharray: 628.3; stroke-dashoffset: 0;
+  filter: drop-shadow(0 0 8px var(--red-glow));
+  transition: stroke-dashoffset 0.5s ease, stroke 0.4s, filter 0.4s;
+}
+.ring-fill.ms { stroke: var(--amber); filter: drop-shadow(0 0 8px rgba(232,168,45,.45)); }
+.ring-fill.ml { stroke: var(--green); filter: drop-shadow(0 0 8px rgba(45,232,154,.45)); }
+.ring-wrap.running .ring-fill { animation: gp 2s ease-in-out infinite; }
+.ring-wrap.running .ring-fill.ms { animation: ga 2s ease-in-out infinite; }
+.ring-wrap.running .ring-fill.ml { animation: gg 2s ease-in-out infinite; }
+@keyframes gp { 0%,100%{filter:drop-shadow(0 0 8px var(--red-glow))} 50%{filter:drop-shadow(0 0 20px rgba(232,67,45,.65))} }
+@keyframes ga { 0%,100%{filter:drop-shadow(0 0 8px rgba(232,168,45,.45))} 50%{filter:drop-shadow(0 0 20px rgba(232,168,45,.7))} }
+@keyframes gg { 0%,100%{filter:drop-shadow(0 0 8px rgba(45,232,154,.45))} 50%{filter:drop-shadow(0 0 20px rgba(45,232,154,.7))} }
+
+.ring-inner { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; }
+.timer-display { font-family: 'JetBrains Mono', monospace; font-size: 3.7rem; font-weight: 300; letter-spacing: -0.02em; line-height: 1; }
+.timer-sub { font-size: 0.67rem; letter-spacing: 0.17em; text-transform: uppercase; color: var(--muted); margin-top: 5px; transition: color 0.3s; }
+
+.controls { display: flex; align-items: center; gap: 14px; margin-top: 26px; }
+.btn-icon {
+  width: 42px; height: 42px; border-radius: 50%; border: 1px solid var(--border);
+  background: var(--btn-bg); color: var(--muted); cursor: pointer;
+  display: flex; align-items: center; justify-content: center; font-size: 1rem; transition: all 0.2s;
+}
+.btn-icon:hover { border-color: var(--border-h); color: var(--text); }
+.btn-play {
+  width: 64px; height: 64px; border-radius: 50%; border: none; background: var(--red); color: #fff;
+  cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 1.35rem;
+  box-shadow: 0 0 28px var(--red-glow), 0 4px 18px var(--shadow); transition: all 0.2s;
+}
+.btn-play:hover { transform: scale(1.07); }
+.btn-play:active { transform: scale(0.96); }
+
+.pomo-row { display: flex; gap: 7px; margin-top: 18px; }
+.pomo-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--muted2); transition: all 0.3s; }
+.pomo-dot.done { background: var(--red); box-shadow: 0 0 7px var(--red-glow); }
+
+/* ─── AUTO-FLOW CARD ─── */
+.flow-card { grid-column:1; grid-row:2; padding: 20px 24px 24px; }
+.flow-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+
+/* Toggle switch */
+.tog-wrap { display: flex; align-items: center; gap: 11px; cursor: pointer; user-select: none; }
+.tog-sw {
+  width: 46px; height: 25px; border-radius: 999px; background: var(--muted2);
+  position: relative; transition: background 0.3s; flex-shrink: 0;
+}
+.tog-sw::after {
+  content: ''; position: absolute; width: 19px; height: 19px; border-radius: 50%;
+  background: var(--muted); top: 3px; left: 3px;
+  box-shadow: 0 1px 4px var(--shadow);
+  transition: transform 0.25s cubic-bezier(.34,1.56,.64,1), background 0.25s;
+}
+.tog-wrap.on .tog-sw { background: var(--red); }
+.tog-wrap.on .tog-sw::after { transform: translateX(21px); background: #fff; }
+.tog-label { font-size: 0.82rem; font-weight: 500; }
+.tog-sub   { font-size: 0.69rem; color: var(--muted); margin-top: 1px; }
+
+/* Flow sequence strip */
+.flow-seq {
+  display: flex; align-items: center; gap: 3px; flex-wrap: nowrap;
+  overflow-x: auto; padding: 12px 14px; border-radius: 14px;
+  background: var(--muted2); transition: opacity 0.3s, background 0.3s;
+  scrollbar-width: none;
+}
+.flow-seq::-webkit-scrollbar { display: none; }
+.flow-seq.off { opacity: 0.32; pointer-events: none; }
+
+.fs-step {
+  display: flex; flex-direction: column; align-items: center; gap: 3px;
+  min-width: 36px; transition: transform 0.3s;
+}
+.fs-dot {
+  width: 30px; height: 30px; border-radius: 9px;
+  display: flex; align-items: center; justify-content: center; font-size: 0.95rem;
+  transition: all 0.3s;
+}
+.fs-dot.p  { background: var(--red-dim); }
+.fs-dot.sb { background: rgba(232,168,45,0.13); }
+.fs-dot.lb { background: rgba(45,232,154,0.13); }
+.fs-step.cur .fs-dot { transform: scale(1.22); }
+.fs-step.cur .fs-dot.p  { box-shadow: 0 0 12px var(--red-glow); }
+.fs-step.cur .fs-dot.sb { box-shadow: 0 0 12px rgba(232,168,45,.4); }
+.fs-step.cur .fs-dot.lb { box-shadow: 0 0 12px rgba(45,232,154,.4); }
+.fs-lbl { font-size: 0.58rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; white-space: nowrap; }
+.fs-arrow { color: var(--muted2); font-size: 0.8rem; flex-shrink: 0; margin-bottom: 12px; }
+
+.cycle-badge {
+  display: inline-flex; align-items: center; gap: 6px; margin-top: 10px;
+  background: var(--red-dim); border: 1px solid rgba(232,67,45,0.22);
+  color: var(--red); font-size: 0.67rem; font-weight: 600; letter-spacing: 0.1em;
+  padding: 4px 11px; border-radius: 999px;
+}
+
+/* ─── TASKS CARD ─── */
+.tasks-card { grid-column:2; grid-row: 1 / 3; display: flex; flex-direction: column; max-height: 700px; }
+.tasks-card .card-header { padding-bottom: 14px; }
+.task-count { font-family: 'JetBrains Mono', monospace; font-size: 0.74rem; color: var(--muted); }
+.task-input-wrap { padding: 0 16px 13px; display: flex; gap: 8px; }
+.task-input {
+  flex: 1; background: var(--muted2); border: 1px solid var(--border);
+  border-radius: 10px; padding: 10px 13px; color: var(--text);
+  font-family: 'DM Sans', sans-serif; font-size: 0.85rem; outline: none;
+  transition: border-color 0.2s, background 0.3s;
+}
+.task-input::placeholder { color: var(--muted); }
+.task-input:focus { border-color: rgba(232,67,45,0.48); }
+.btn-add { background: var(--red); border: none; border-radius: 10px; padding: 10px 15px; color: #fff; cursor: pointer; font-size: 1.1rem; transition: opacity 0.2s; }
+.btn-add:hover { opacity: 0.8; }
+
+.task-list { flex: 1; overflow-y: auto; padding: 0 16px 18px; display: flex; flex-direction: column; gap: 7px; }
+.task-list::-webkit-scrollbar { width: 4px; }
+.task-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+.task-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 11px 12px; background: var(--muted2); border: 1px solid transparent;
+  border-radius: 12px; cursor: pointer; transition: all 0.2s;
+  animation: slideIn .22s ease;
+}
+@keyframes slideIn { from{opacity:0;transform:translateY(-7px)} to{opacity:1;transform:translateY(0)} }
+.task-item:hover { background: var(--btn-bg); border-color: var(--border); }
+.task-item.act-task { border-color: rgba(232,67,45,0.4); background: var(--red-dim); }
+.task-item.done-task { opacity: 0.38; }
+.task-item.done-task .task-text { text-decoration: line-through; }
+
+.task-check {
+  width: 20px; height: 20px; border-radius: 6px; border: 1.5px solid var(--muted);
+  flex-shrink: 0; display: flex; align-items: center; justify-content: center;
+  font-size: 0.65rem; color: #fff; transition: all 0.2s;
+}
+.task-item.done-task .task-check { background: var(--green); border-color: var(--green); }
+.task-text { flex: 1; font-size: 0.86rem; line-height: 1.35; }
+.task-pomos { display: flex; align-items: center; gap: 3px; font-family: 'JetBrains Mono', monospace; font-size: 0.69rem; color: var(--muted); }
+.task-pomos span { color: var(--red); }
+.task-del { opacity: 0; background: none; border: none; color: var(--muted); cursor: pointer; font-size: 0.88rem; padding: 2px 4px; border-radius: 4px; transition: all 0.15s; }
+.task-item:hover .task-del { opacity: 1; }
+.task-del:hover { color: var(--red); }
+
+/* ─── STATS CARD ─── */
+.stats-card { grid-column:2; grid-row:3; padding: 20px 24px 24px; }
+.stats-meta { display: flex; gap: 10px; margin: 14px 0 20px; }
+.stat-pill { background: var(--muted2); border-radius: 12px; padding: 10px 12px; flex: 1; text-align: center; transition: background 0.3s; }
+.stat-pill .num { font-family: 'JetBrains Mono', monospace; font-size: 1.5rem; font-weight: 400; line-height: 1; }
+.stat-pill .lbl { font-size: 0.6rem; text-transform: uppercase; letter-spacing: 0.09em; color: var(--muted); margin-top: 3px; }
+.chart-ttl { font-size: 0.65rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); margin-bottom: 11px; }
+.bar-chart { display: flex; gap: 6px; align-items: flex-end; height: 86px; }
+.bar-col { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; height: 100%; justify-content: flex-end; }
+.bar { width: 100%; border-radius: 5px 5px 2px 2px; min-height: 4px; transition: height 0.6s cubic-bezier(.34,1.56,.64,1); position: relative; }
+.bar.today { background: var(--red); box-shadow: 0 0 10px var(--red-glow); }
+.bar.past  { background: var(--muted2); }
+.bar-val { font-family: 'JetBrains Mono', monospace; font-size: 0.6rem; color: var(--muted); position: absolute; top: -14px; left: 50%; transform: translateX(-50%); white-space: nowrap; }
+.bar-lbl { font-size: 0.59rem; color: var(--muted); text-align: center; }
+.bar-lbl.tdy { color: var(--red); }
+
+/* ─── NOTIFICATION ─── */
+.notif {
+  position: fixed; top: 18px; left: 50%;
+  transform: translateX(-50%) translateY(-90px);
+  background: var(--bg2); border: 1px solid var(--border); backdrop-filter: blur(24px);
+  border-radius: 14px; padding: 12px 22px; font-size: 0.86rem; z-index: 999;
+  transition: transform 0.38s cubic-bezier(.34,1.56,.64,1), background 0.3s;
+  display: flex; align-items: center; gap: 10px; box-shadow: 0 8px 30px var(--shadow);
+}
+.notif.show { transform: translateX(-50%) translateY(0); }
+.ni { font-size: 1.2rem; }
+
+@media (max-width: 740px) {
+  .main-grid { grid-template-columns: 1fr; }
+  .flow-card  { grid-column:1; grid-row:2; }
+  .tasks-card { grid-column:1; grid-row:3; max-height:360px; }
+  .stats-card { grid-column:1; grid-row:4; }
+  :root { --ring-size: 240px; }
+  .timer-display { font-size: 3rem; }
+}
+</style>
+</head>
+<body>
+
+<div class="notif" id="notif">
+  <span class="ni" id="ni">🍅</span>
+  <span id="nt"></span>
+</div>
+
+<div class="container">
+  <header>
+    <div class="logo">
+      <div class="logo-dot"></div>
+      FOCUS
+    </div>
+    <div class="header-right">
+      <!-- Language -->
+      <div class="lang-group">
+        <button class="lang-btn" onclick="setLang('zh')" data-l="zh">中文</button>
+        <button class="lang-btn" onclick="setLang('en')" data-l="en">EN</button>
+        <button class="lang-btn" onclick="setLang('es')" data-l="es">ES</button>
+      </div>
+      <!-- Theme -->
+      <button class="theme-btn" id="themeBtn" onclick="toggleTheme()">🌙</button>
+      <!-- Status -->
+      <div class="status-badge" id="badge">···</div>
+    </div>
+  </header>
+
+  <div class="main-grid">
+
+    <!-- TIMER -->
+    <div class="card timer-card">
+      <div class="card-header">
+        <span class="card-title" data-k="timerTitle">计时器</span>
+      </div>
+      <div class="mode-tabs">
+        <button class="mode-tab active" data-mode="pomodoro" data-k="mPomo" onclick="manualMode(this)">专注</button>
+        <button class="mode-tab"        data-mode="short"    data-k="mShort" onclick="manualMode(this)">短休息</button>
+        <button class="mode-tab"        data-mode="long"     data-k="mLong"  onclick="manualMode(this)">长休息</button>
+      </div>
+      <div class="ring-wrap" id="rw">
+        <svg class="ring-svg" viewBox="0 0 220 220">
+          <circle class="ring-track" cx="110" cy="110" r="100"/>
+          <circle class="ring-fill"  cx="110" cy="110" r="100" id="rf"/>
+        </svg>
+        <div class="ring-inner">
+          <div class="timer-display" id="td">25:00</div>
+          <div class="timer-sub" id="ts">专注</div>
+        </div>
+      </div>
+      <div class="controls">
+        <button class="btn-icon" onclick="resetTimer()" title="Reset">↺</button>
+        <button class="btn-play" id="pb" onclick="toggleTimer()">▶</button>
+        <button class="btn-icon" onclick="skipSession()" title="Skip">⏭</button>
+      </div>
+      <div class="pomo-row" id="pr">
+        <div class="pomo-dot"></div><div class="pomo-dot"></div>
+        <div class="pomo-dot"></div><div class="pomo-dot"></div>
+      </div>
+    </div>
+
+    <!-- AUTO-FLOW -->
+    <div class="card flow-card">
+      <div class="card-header">
+        <span class="card-title" data-k="flowTitle">自动流程</span>
+      </div>
+      <div style="padding:14px 22px 0">
+        <div class="flow-top">
+          <div class="tog-wrap" id="togWrap" onclick="toggleAuto()">
+            <div class="tog-sw"></div>
+            <div>
+              <div class="tog-label" data-k="flowLabel">自动循环模式</div>
+              <div class="tog-sub"   data-k="flowSub">完成后自动切换下一阶段</div>
+            </div>
+          </div>
+        </div>
+        <div class="flow-seq off" id="flowSeq"></div>
+        <div><span class="cycle-badge">♻ <span data-k="cycleRepeat">完成后循环重复</span></span></div>
+      </div>
+    </div>
+
+    <!-- TASKS -->
+    <div class="card tasks-card">
+      <div class="card-header">
+        <span class="card-title" data-k="tasksTitle">任务列表</span>
+        <span class="task-count" id="tc">0</span>
+      </div>
+      <div class="task-input-wrap">
+        <input class="task-input" id="ti" type="text" placeholder="添加新任务…" maxlength="60"
+               onkeydown="if(event.key==='Enter')addTask()">
+        <button class="btn-add" onclick="addTask()">＋</button>
+      </div>
+      <div class="task-list" id="tl"></div>
+    </div>
+
+    <!-- STATS -->
+    <div class="card stats-card">
+      <div class="card-header">
+        <span class="card-title" data-k="statsTitle">本周统计</span>
+      </div>
+      <div class="stats-meta">
+        <div class="stat-pill"><div class="num" id="sTotal">0</div><div class="lbl" data-k="sToday">今日番茄</div></div>
+        <div class="stat-pill"><div class="num" id="sFocus">0m</div><div class="lbl" data-k="sFocus">专注时间</div></div>
+        <div class="stat-pill"><div class="num" id="sDone">0</div><div class="lbl" data-k="sDone">完成任务</div></div>
+      </div>
+      <div class="chart-ttl" data-k="chartTitle">每日番茄数</div>
+      <div class="bar-chart" id="bc"></div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+/* ══════════════════════════════════════════════════
+   I18N
+══════════════════════════════════════════════════ */
+const I18N = {
+  zh:{
+    timerTitle:'计时器', mPomo:'专注', mShort:'短休息', mLong:'长休息',
+    flowTitle:'自动流程', flowLabel:'自动循环模式', flowSub:'完成后自动切换下一阶段',
+    cycleRepeat:'完成后循环重复',
+    tasksTitle:'任务列表', tPH:'添加新任务…', tCount:n=>`${n} 个任务`, emptyTask:'暂无任务，开始专注吧！',
+    statsTitle:'本周统计', sToday:'今日番茄', sFocus:'专注时间', sDone:'完成任务',
+    chartTitle:'每日番茄数',
+    stReady:'准备开始', stPause:'已暂停', stFocus:'专注中…', stShort:'短休息中…', stLong:'长休息中…',
+    lFocus:'专注', lShort:'短休息', lLong:'长休息',
+    nfDone:'专注完成！去休息一下吧 ✨', nbDone:'休息结束！重新专注 💪',
+    nAuto:lbl=>`自动切换 → ${lbl}`,
+    days:['日','一','二','三','四','五','六'], today:'今天', del:'删除',
+  },
+  en:{
+    timerTitle:'Timer', mPomo:'Focus', mShort:'Short Break', mLong:'Long Break',
+    flowTitle:'Auto Flow', flowLabel:'Auto-cycle Mode', flowSub:'Next phase starts automatically',
+    cycleRepeat:'Repeats on completion',
+    tasksTitle:'Tasks', tPH:'Add a new task…', tCount:n=>`${n} task${n===1?'':'s'}`, emptyTask:'No tasks yet — start focusing!',
+    statsTitle:'Weekly Stats', sToday:"Today's Pomos", sFocus:'Focus Time', sDone:'Done Tasks',
+    chartTitle:'Daily Pomodoros',
+    stReady:'Ready', stPause:'Paused', stFocus:'Focusing…', stShort:'Short Break…', stLong:'Long Break…',
+    lFocus:'Focus', lShort:'Short Break', lLong:'Long Break',
+    nfDone:'Focus done! Time for a break ✨', nbDone:'Break over! Back to work 💪',
+    nAuto:lbl=>`Auto → ${lbl}`,
+    days:['Sun','Mon','Tue','Wed','Thu','Fri','Sat'], today:'Today', del:'Delete',
+  },
+  es:{
+    timerTitle:'Temporizador', mPomo:'Enfoque', mShort:'Descanso', mLong:'Pausa larga',
+    flowTitle:'Flujo auto', flowLabel:'Modo ciclo automático', flowSub:'Cambia de fase automáticamente',
+    cycleRepeat:'Se repite al terminar',
+    tasksTitle:'Tareas', tPH:'Añadir tarea…', tCount:n=>`${n} tarea${n===1?'':'s'}`, emptyTask:'Sin tareas. ¡Empieza a enfocarte!',
+    statsTitle:'Esta semana', sToday:'Pomodoros hoy', sFocus:'Tiempo enfocado', sDone:'Tareas hechas',
+    chartTitle:'Pomodoros por día',
+    stReady:'Listo', stPause:'Pausado', stFocus:'Enfocando…', stShort:'Descanso…', stLong:'Pausa larga…',
+    lFocus:'Enfoque', lShort:'Descanso', lLong:'Pausa larga',
+    nfDone:'¡Enfoque completo! Descansa ✨', nbDone:'¡Descanso terminado! Vuelve 💪',
+    nAuto:lbl=>`Auto → ${lbl}`,
+    days:['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'], today:'Hoy', del:'Eliminar',
+  }
+};
+
+let lang = localStorage.getItem('pf_lang') || 'zh';
+const T = key => { const v=I18N[lang][key]; return typeof v==='function'?v:v||key; };
+const Tf = (key,...a) => { const v=I18N[lang][key]; return typeof v==='function'?v(...a):v||key; };
+
+function setLang(l) {
+  lang = l; localStorage.setItem('pf_lang', l);
+  document.querySelectorAll('[data-l]').forEach(b => b.classList.toggle('active', b.dataset.l===l));
+  applyI18n();
+}
+function applyI18n() {
+  document.querySelectorAll('[data-k]').forEach(el => { const v=T(el.dataset.k); if(typeof v==='string') el.textContent=v; });
+  document.getElementById('ti').placeholder = T('tPH');
+  document.getElementById('ts').textContent = modeLabel(S.mode);
+  renderTasks(); renderChart(); renderFlowSeq(); refreshBadge();
+}
+
+/* ══════════════════════════════════════════════════
+   THEME
+══════════════════════════════════════════════════ */
+let dark = localStorage.getItem('pf_theme') !== 'light';
+function applyTheme() {
+  document.body.classList.toggle('light', !dark);
+  document.getElementById('themeBtn').textContent = dark ? '🌙' : '☀️';
+}
+function toggleTheme() { dark=!dark; localStorage.setItem('pf_theme',dark?'dark':'light'); applyTheme(); }
+
+/* ══════════════════════════════════════════════════
+   AUTO-FLOW CYCLE
+   0=pomo 1=short 2=pomo 3=short 4=pomo 5=short 6=pomo 7=long
+══════════════════════════════════════════════════ */
+const CYCLE = [
+  {m:'pomodoro',d:25*60},{m:'short',d:5*60},
+  {m:'pomodoro',d:25*60},{m:'short',d:5*60},
+  {m:'pomodoro',d:25*60},{m:'short',d:5*60},
+  {m:'pomodoro',d:25*60},{m:'long', d:15*60},
+];
+let autoOn  = localStorage.getItem('pf_auto')==='1';
+let cycleIdx = 0;
+
+function toggleAuto() {
+  autoOn = !autoOn; localStorage.setItem('pf_auto', autoOn?'1':'0');
+  document.getElementById('togWrap').classList.toggle('on', autoOn);
+  document.getElementById('flowSeq').classList.toggle('off', !autoOn);
+  if (autoOn) { cycleIdx = Math.max(0, CYCLE.findIndex(c=>c.m===S.mode)); }
+  renderFlowSeq();
+}
+
+function renderFlowSeq() {
+  const seq = document.getElementById('flowSeq');
+  seq.innerHTML = '';
+  CYCLE.forEach((step, i) => {
+    const isCur = autoOn && i===cycleIdx;
+    const isPomo = step.m==='pomodoro', isLong = step.m==='long';
+    const emoji  = isPomo?'🍅':isLong?'🌿':'☕';
+    const cls    = isPomo?'p':isLong?'lb':'sb';
+    // short label (≤4 chars)
+    const lbl = isPomo ? T('mPomo') : isLong ? T('mLong') : T('mShort');
+    const s4 = lbl.length>5 ? lbl.slice(0,4)+'…' : lbl;
+
+    const div = document.createElement('div');
+    div.className = 'fs-step' + (isCur?' cur':'');
+    div.innerHTML = `<div class="fs-dot ${cls}">${emoji}</div><span class="fs-lbl">${s4}</span>`;
+    seq.appendChild(div);
+    if (i < CYCLE.length-1) {
+      const arr = document.createElement('div'); arr.className='fs-arrow'; arr.textContent='›';
+      seq.appendChild(arr);
+    }
+  });
+}
+
+/* ══════════════════════════════════════════════════
+   STATE
+══════════════════════════════════════════════════ */
+const CIRC = 2*Math.PI*100; // ≈628.3
+
+const S = {
+  mode:'pomodoro', duration:25*60, remaining:25*60,
+  running:false, interval:null, pomoCount:0,
+  tasks:[], activeTask:null,
+  stats:loadStats(), totalToday:0, focusMin:0,
+};
+
+function modeLabel(m) {
+  return m==='pomodoro'?T('lFocus'):m==='short'?T('lShort'):T('lLong');
+}
+
+/* ══════════════════════════════════════════════════
+   STORAGE
+══════════════════════════════════════════════════ */
+function loadStats() {
+  try { const r=localStorage.getItem('pf_stats'); if(r) return JSON.parse(r); } catch(e){}
+  const arr=[];
+  for(let i=6;i>=0;i--){const d=new Date();d.setDate(d.getDate()-i);arr.push({date:d.toDateString(),count:i===0?0:Math.floor(Math.random()*6)});}
+  return arr;
+}
+function saveStats(){ try{localStorage.setItem('pf_stats',JSON.stringify(S.stats));}catch(e){} }
+function loadTasks(){ try{const r=localStorage.getItem('pf_tasks');if(r)return JSON.parse(r);}catch(e){} return []; }
+function saveTasks(){ try{localStorage.setItem('pf_tasks',JSON.stringify(S.tasks));}catch(e){} }
+
+/* ══════════════════════════════════════════════════
+   INIT
+══════════════════════════════════════════════════ */
+document.addEventListener('DOMContentLoaded',()=>{
+  applyTheme();
+  S.tasks = loadTasks();
+  const te = S.stats.find(d=>d.date===new Date().toDateString());
+  S.totalToday = te ? te.count : 0;
+  document.querySelectorAll('[data-l]').forEach(b=>b.classList.toggle('active',b.dataset.l===lang));
+  document.getElementById('togWrap').classList.toggle('on', autoOn);
+  document.getElementById('flowSeq').classList.toggle('off', !autoOn);
+  applyI18n();
+  updateDisplay(); updateRing(); updateDots(); updateStats(); refreshBadge();
+});
+
+/* ══════════════════════════════════════════════════
+   TIMER
+══════════════════════════════════════════════════ */
+function toggleTimer(){ S.running ? pause() : play(); }
+function play(){
+  S.running=true; document.getElementById('pb').textContent='⏸';
+  document.getElementById('rw').classList.add('running'); refreshBadge();
+  S.interval = setInterval(tick,1000);
+}
+function pause(){
+  S.running=false; clearInterval(S.interval);
+  document.getElementById('pb').textContent='▶';
+  document.getElementById('rw').classList.remove('running'); refreshBadge();
+}
+function resetTimer(){ pause(); S.remaining=S.duration; updateDisplay(); updateRing(); refreshBadge(); }
+function skipSession(){ pause(); onComplete(true); }
+
+function tick(){
+  S.remaining--;
+  if(S.remaining<=0){ S.remaining=0; updateDisplay(); updateRing(); pause(); onComplete(false); }
+  else { updateDisplay(); updateRing(); }
+}
+
+/* ══════════════════════════════════════════════════
+   SESSION COMPLETE
+══════════════════════════════════════════════════ */
+function onComplete(skipped){
+  if(S.mode==='pomodoro'){
+    const ts = new Date().toDateString();
+    const td = S.stats.find(d=>d.date===ts);
+    if(td){td.count++;}else{S.stats.push({date:ts,count:1});if(S.stats.length>7)S.stats.shift();}
+    S.totalToday = (S.stats.find(d=>d.date===ts)||{}).count||0;
+    S.focusMin += 25;
+    if(!skipped && S.activeTask!==null){
+      const task=S.tasks.find(t=>t.id===S.activeTask);
+      if(task){task.pomos++;saveTasks();renderTasks();}
+    }
+    saveStats(); updateStats(); renderChart();
+    S.pomoCount = (S.pomoCount%4)+1; updateDots();
+    notify('🍅', T('nfDone'));
+  } else {
+    notify('⚡', T('nbDone'));
+  }
+
+  if(autoOn){
+    cycleIdx = (cycleIdx+1) % CYCLE.length;
+    renderFlowSeq();
+    const nxt = CYCLE[cycleIdx];
+    const nLbl = modeLabel(nxt.m);
+    setTimeout(()=>{
+      notify('▶', Tf('nAuto', nLbl));
+      applyModeInternal(nxt.m, nxt.d);
+      setTimeout(play, 900);
+    }, 1200);
+  } else {
+    setTimeout(()=>{ S.remaining=S.duration; updateDisplay(); updateRing(); refreshBadge(); }, 500);
+  }
+}
+
+/* ══════════════════════════════════════════════════
+   MODE
+══════════════════════════════════════════════════ */
+const DURS = {pomodoro:25*60, short:5*60, long:15*60};
+
+function applyModeInternal(m, dur){
+  S.mode=m; S.duration=dur; S.remaining=dur;
+  document.querySelectorAll('.mode-tab').forEach(b=>b.classList.toggle('active',b.dataset.mode===m));
+  document.getElementById('ts').textContent = modeLabel(m);
+  updateDisplay(); updateRing(); refreshBadge();
+}
+function manualMode(btn){
+  if(autoOn && S.running) return;
+  pause();
+  const m=btn.dataset.mode;
+  if(autoOn){ cycleIdx=Math.max(0,CYCLE.findIndex(c=>c.m===m)); }
+  applyModeInternal(m, DURS[m]);
+  renderFlowSeq();
+}
+
+/* ══════════════════════════════════════════════════
+   DISPLAY
+══════════════════════════════════════════════════ */
+function updateDisplay(){
+  const m=String(Math.floor(S.remaining/60)).padStart(2,'0');
+  const s=String(S.remaining%60).padStart(2,'0');
+  document.getElementById('td').textContent=m+':'+s;
+}
+function updateRing(){
+  const rf=document.getElementById('rf');
+  rf.style.strokeDasharray=CIRC;
+  rf.style.strokeDashoffset=CIRC*(1-S.remaining/S.duration);
+  rf.className='ring-fill';
+  if(S.mode==='short') rf.classList.add('ms');
+  if(S.mode==='long')  rf.classList.add('ml');
+}
+function updateDots(){
+  document.querySelectorAll('.pomo-dot').forEach((d,i)=>d.classList.toggle('done',i<S.pomoCount));
+}
+function refreshBadge(){
+  const el=document.getElementById('badge');
+  if(!S.running){
+    el.textContent = S.remaining===S.duration ? T('stReady') : T('stPause');
+  } else {
+    el.textContent = S.mode==='pomodoro'?T('stFocus'):S.mode==='short'?T('stShort'):T('stLong');
+  }
+}
+function updateStats(){
+  document.getElementById('sTotal').textContent=S.totalToday;
+  document.getElementById('sFocus').textContent=S.focusMin+'m';
+  document.getElementById('sDone').textContent=S.tasks.filter(t=>t.done).length;
+}
+
+/* ══════════════════════════════════════════════════
+   CHART
+══════════════════════════════════════════════════ */
+function renderChart(){
+  const bc=document.getElementById('bc'); bc.innerHTML='';
+  const mx=Math.max(...S.stats.map(d=>d.count),1);
+  const ts=new Date().toDateString();
+  S.stats.forEach(d=>{
+    const isTdy=d.date===ts;
+    const pct=(d.count/mx)*100;
+    const dow=new Date(d.date).getDay();
+    const col=document.createElement('div'); col.className='bar-col';
+    col.innerHTML=`
+      <div class="bar ${isTdy?'today':'past'}" style="height:${pct}%">
+        ${d.count>0?`<span class="bar-val">${d.count}</span>`:''}
+      </div>
+      <div class="bar-lbl${isTdy?' tdy':''}">${isTdy?T('today'):I18N[lang].days[dow]}</div>`;
+    bc.appendChild(col);
+  });
+}
+
+/* ══════════════════════════════════════════════════
+   TASKS
+══════════════════════════════════════════════════ */
+function addTask(){
+  const inp=document.getElementById('ti'), txt=inp.value.trim();
+  if(!txt) return;
+  S.tasks.unshift({id:Date.now(),text:txt,done:false,pomos:0});
+  inp.value=''; saveTasks(); renderTasks(); updateStats();
+}
+function toggleTask(id){ const t=S.tasks.find(t=>t.id===id); if(t){t.done=!t.done;saveTasks();renderTasks();updateStats();} }
+function deleteTask(id){ S.tasks=S.tasks.filter(t=>t.id!==id); if(S.activeTask===id)S.activeTask=null; saveTasks();renderTasks();updateStats(); }
+function setActive(id){ S.activeTask=S.activeTask===id?null:id; renderTasks(); }
+
+function renderTasks(){
+  const list=document.getElementById('tl'); list.innerHTML='';
+  if(!S.tasks.length){
+    list.innerHTML=`<div style="text-align:center;color:var(--muted2);font-size:.81rem;padding:30px 0;letter-spacing:.05em">${T('emptyTask')}</div>`;
+  }
+  S.tasks.forEach(task=>{
+    const el=document.createElement('div');
+    el.className='task-item'+(task.done?' done-task':'')+(S.activeTask===task.id?' act-task':'');
+    el.innerHTML=`
+      <div class="task-check" onclick="toggleTask(${task.id});event.stopPropagation()">${task.done?'✓':''}</div>
+      <div class="task-text">${esc(task.text)}</div>
+      ${task.pomos>0?`<div class="task-pomos">🍅<span>${task.pomos}</span></div>`:''}
+      <button class="task-del" onclick="deleteTask(${task.id});event.stopPropagation()" title="${T('del')}">✕</button>`;
+    el.addEventListener('click',()=>setActive(task.id));
+    list.appendChild(el);
+  });
+  document.getElementById('tc').textContent=Tf('tCount',S.tasks.length);
+}
+const esc=s=>s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+
+/* ══════════════════════════════════════════════════
+   NOTIFICATION
+══════════════════════════════════════════════════ */
+function notify(icon, text){
+  document.getElementById('ni').textContent=icon;
+  document.getElementById('nt').textContent=text;
+  const n=document.getElementById('notif'); n.classList.add('show');
+  try{
+    const ctx=new(window.AudioContext||window.webkitAudioContext)();
+    [0,220,440].forEach(dl=>{
+      const o=ctx.createOscillator(),g=ctx.createGain();
+      o.connect(g);g.connect(ctx.destination);
+      o.frequency.value=dl===220?1100:880;
+      g.gain.setValueAtTime(.12,ctx.currentTime+dl/1000);
+      g.gain.exponentialRampToValueAtTime(.001,ctx.currentTime+dl/1000+.28);
+      o.start(ctx.currentTime+dl/1000); o.stop(ctx.currentTime+dl/1000+.3);
+    });
+  }catch(e){}
+  clearTimeout(notify._t);
+  notify._t=setTimeout(()=>n.classList.remove('show'),3200);
+}
+
+document.addEventListener('keydown',e=>{
+  if(e.code==='Space'&&e.target.tagName!=='INPUT'){e.preventDefault();toggleTimer();}
+});
+</script>
+</body>
+</html>
